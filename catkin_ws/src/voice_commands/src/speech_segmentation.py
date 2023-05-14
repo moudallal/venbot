@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # this node processes the vocal input the user provided through speech_to_text.py using the Speech Message
 

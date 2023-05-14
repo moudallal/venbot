@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # need to install SpeechRecognition - pip install SpeechRecognition
 # run by calling - rosrun ros_vosk speech_rec
