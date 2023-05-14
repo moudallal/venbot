@@ -15,6 +15,9 @@ from pyquaternion import Quaternion as PyQuaternion
 import numpy as np
 from gazebo_ros_link_attacher.srv import SetStatic, SetStaticRequest, SetStaticResponse
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
+from voice_commands.msg import Command
+
+command = Command()
 
 PKG_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -78,22 +81,22 @@ MODELS_INFO = {
 # }
 
 COLORS_INFO = {
-    "RED": {
+    "red": {
         "center": [],
         "upper_left_corner": [0.048724, -0.204377, 0.777],
         "lower_right_corner": [0.230023, -0.396315, 0.777]
     },
-    "BLUE": {
+    "blue": {
         "center": [],
         "upper_left_corner": [0.361868, -0.200604, 0.777],
         "lower_right_corner": [0.524640, -0.400440, 0.777]
     },
-    "GREEN": {
+    "green": {
         "center": [],
         "upper_left_corner": [0.054904, -0.575555, 0.777],
         "lower_right_corner": [0.217644, -0.767094, 0.777]
     },
-    "YELLOW": {
+    "yellow": {
         "center": [],
         "upper_left_corner": [0.347410, -0.563181, 0.777],
         "lower_right_corner": [0.506025, -0.734134, 0.777]
@@ -150,6 +153,9 @@ def get_gazebo_model_name(model_name, vision_model_pose):
             continue
         # Get everything inside a square of side epsilon centered in vision_model_pose
         ds = abs(model_pose.position.x - vision_model_pose.position.x) + abs(model_pose.position.y - vision_model_pose.position.y)
+        print('ds = ' + str(ds))
+        print('model_pose = ' + str(model_pose.position.x) + ' ' + str(model_pose.position.y))
+        print('vision_pose = ' + str(vision_model_pose.position.x) + ' ' + str(vision_model_pose.position.y))
         if ds <= epsilon:
             return gazebo_model_name
     raise ValueError(f"Model {model_name} at position {vision_model_pose.position.x} {vision_model_pose.position.y} was not found!")
@@ -386,13 +392,18 @@ def set_gripper(value):
 
     return action_gripper.get_result()
 
+def command_callback(cmd):
+    # print(command.verb + ' ' + command.color)
+    command.verb = cmd.verb
+    command.color = cmd.color
+    command.valid = cmd.valid
 
 if __name__ == "__main__":
     print("Initializing node of kinematics")
     rospy.init_node("send_joints")
+    rospy.Subscriber("/command", Command, command_callback)
 
     controller = ArmController()
-
     # Create an action client for the gripper
     action_gripper = actionlib.SimpleActionClient(
         "/gripper_controller/gripper_cmd",
@@ -414,52 +425,75 @@ if __name__ == "__main__":
     rospy.sleep(0.5)
     legos = get_legos_pos(vision=True)
     legos.sort(reverse=True, key=lambda a: (a[1].position.x, a[1].position.y))
+    prev = ''
+    lego_in_operation = {}
+    picked = False
+    while not rospy.is_shutdown():
+        if command.verb == 'pick' and not picked:
+            for model_name, model_pose, model_color in legos:
+                if model_color == command.color:
+                    lego_name = model_name
+                    lego_pose = model_pose
+                    lego_color = command.color
+                    prev = lego_color
+                    break
+           
+            open_gripper()
+       
+            # Get actual model_name at model xyz coordinates
+            gazebo_model_name = get_gazebo_model_name(lego_name, lego_pose)
+            lego_in_operation["lego_name"] = lego_name
+            lego_in_operation["lego_pose"] = lego_pose
+            lego_in_operation["lego_color"] = lego_color
+            lego_in_operation["gazebo_model_name"] = gazebo_model_name
 
-    for model_name, model_pose, model_color in legos:
-        open_gripper()
-        try:
-            model_home = MODELS_INFO[model_name]["home"]
-            model_size = MODELS_INFO[model_name]["size"]
+            # Straighten lego
+            straighten(lego_pose, gazebo_model_name)
+            controller.move(dz=0.15)
+            controller.move_to(*DEFAULT_POS, DEFAULT_QUAT)  # moving to destination would be done when processing the "place" command
 
-            target_upper_left = COLORS_INFO[model_color]["upper_left_corner"]
-            target_lower_right = COLORS_INFO[model_color]["lower_right_corner"]
-        except ValueError as e:
-            print(f"Model name {model_name} was not recognized!")
-            continue
+            picked = True
 
-        # Get actual model_name at model xyz coordinates
-        try:
-            gazebo_model_name = get_gazebo_model_name(model_name, model_pose)
-        except ValueError as e:
-            print(e)
-            continue
+        elif command.verb == 'place' and picked:
+            if command.color == 'previous':
+                lego_color = prev
+            else:
+                lego_color = command.color
+            for model_name, model_pose, model_color in legos:
+                if model_color == lego_color:
+                    lego_name = model_name
+                    lego_pose = model_pose
 
-        # Straighten lego
-        straighten(model_pose, gazebo_model_name)
-        controller.move(dz=0.15)
+            model_home = MODELS_INFO[lego_name]["home"]
+            model_size = MODELS_INFO[lego_name]["size"]
 
-        """
-            Go to destination
-        """
-        # x, y, z = model_home
-        x = random.uniform(target_upper_left[0], target_lower_right[0])
-        y = random.uniform(target_upper_left[1], target_lower_right[1])
-        z = target_upper_left[2]
-        z += model_size[2] / 2 +0.004
-        print(f"Moving model {model_name} to {x} {y} {z}")
+            target_upper_left = COLORS_INFO[lego_color]["upper_left_corner"]
+            target_lower_right = COLORS_INFO[lego_color]["lower_right_corner"]  
 
-        controller.move_to(x, y, target_quat=DEFAULT_QUAT * PyQuaternion(axis=[0, 0, 1], angle=math.pi / 2))
-        # Lower the object and release
-        controller.move_to(x, y, z)
-        set_model_fixed(gazebo_model_name)
-        open_gripper(gazebo_model_name)
-        controller.move(dz=0.15)
+            # x, y, z = model_home
+            x = random.uniform(target_upper_left[0], target_lower_right[0])
+            y = random.uniform(target_upper_left[1], target_lower_right[1])
+            z = target_upper_left[2]
+            z += model_size[2] / 2 +0.004
+            print(f"Moving model {model_name} to {x} {y} {z}")
 
-        if controller.gripper_pose[0][1] > -0.3 and controller.gripper_pose[0][0] > 0:
+            controller.move_to(x, y, target_quat=DEFAULT_QUAT * PyQuaternion(axis=[0, 0, 1], angle=math.pi / 2))
+            # Lower the object and release
+            controller.move_to(x, y, z)
+            set_model_fixed(lego_in_operation["gazebo_model_name"])
+            open_gripper(lego_in_operation["gazebo_model_name"])
+            controller.move(dz=0.15)
             controller.move_to(*DEFAULT_POS, DEFAULT_QUAT)
+            # if controller.gripper_pose[0][1] > -0.3 and controller.gripper_pose[0][0] > 0:
+            #     controller.move_to(*DEFAULT_POS, DEFAULT_QUAT)
 
-        # increment z in order to stack lego correctly
-        MODELS_INFO[model_name]["home"][2] += model_size[2] - INTERLOCKING_OFFSET
+            # increment z in order to stack lego correctly
+            MODELS_INFO[model_name]["home"][2] += model_size[2] - INTERLOCKING_OFFSET
+
+            picked = False
+        else:
+            pass
+
     print("Moving to Default Position")
     controller.move_to(*DEFAULT_POS, DEFAULT_QUAT)
     open_gripper()
