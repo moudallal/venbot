@@ -1,0 +1,6 @@
+<launch>
+    <!--node name="command_listener" pkg="project550" type="command_listener.py" output="screen"/-->
+    <node name="speech_to_text" pkg="voice_commands" type="speech_to_text.py" output="screen" />
+    <node name="speech_segmentation" pkg="voice_commands" type="speech_segmentation.py" output="screen" />
+</launch>
+    
