@@ -135,12 +135,7 @@ brickOrientations = { \
 		'X2-Y2-Z2-FILLET': (((1,1),(1,2),(0,2)),2.496793,0.018718) \
 		} #brickOrientations = (((side, roll), ...), rotX, height)
 
-#color bricks
-# colorList = ['Gazebo/Indigo', 'Gazebo/Gray', 'Gazebo/Orange', \
-# 		'Gazebo/Red', 'Gazebo/Purple', 'Gazebo/SkyBlue', \
-# 		'Gazebo/DarkYellow', 'Gazebo/White', 'Gazebo/Green']
-
-colorList = [ 'Gazebo/Red', 'Gazebo/Yellow']
+colorList = ['Gazebo/Red', 'Gazebo/Blue', 'Gazebo/Green', 'Gazebo/Yellow']
 
 brickList = list(brickDict.keys())
 counters = [0 for brick in brickList]
