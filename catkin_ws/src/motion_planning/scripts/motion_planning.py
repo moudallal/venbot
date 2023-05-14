@@ -54,26 +54,49 @@ MODELS_INFO = {
     }
 }
 
+# COLORS_INFO = {
+#     "RED": {
+#         "center": [],
+#         "upper_left_corner": [0.069017, -0.137642, 0.777],
+#         "lower_right_corner": [0.312757, -0.404576, 0.777]
+#     },
+#     "BLUE": {
+#         "center": [],
+#         "upper_left_corner": [0.420563, -0.141769, 0.777],
+#         "lower_right_corner": [0.659010, -0.405402, 0.777]
+#     },
+#     "GREEN": {
+#         "center": [],
+#         "upper_left_corner": [0.083016, -0.582958, 0.777],
+#         "lower_right_corner": [0.308283, -0.837076, 0.777]
+#     },
+#     "YELLOW": {
+#         "center": [],
+#         "upper_left_corner": [0.426449, -0.580072, 0.777],
+#         "lower_right_corner": [0.638743, -0.822116, 0.777]
+#     }
+# }
+
 COLORS_INFO = {
     "RED": {
         "center": [],
-        "upper_left_corner": [0.069017, -0.137642, 0.777],
-        "lower_right_corner": [0.312757, -0.404576, 0.777]
+        "upper_left_corner": [0.048724, -0.204377, 0.777],
+        "lower_right_corner": [0.230023, -0.396315, 0.777]
     },
     "BLUE": {
         "center": [],
-        "upper_left_corner": [0.420563, -0.141769, 0.777],
-        "lower_right_corner": [0.659010, -0.405402, 0.777]
+        "upper_left_corner": [0.361868, -0.200604, 0.777],
+        "lower_right_corner": [0.524640, -0.400440, 0.777]
     },
     "GREEN": {
         "center": [],
-        "upper_left_corner": [0.083016, -0.582958, 0.777],
-        "lower_right_corner": [0.308283, -0.837076, 0.777]
+        "upper_left_corner": [0.054904, -0.575555, 0.777],
+        "lower_right_corner": [0.217644, -0.767094, 0.777]
     },
     "YELLOW": {
         "center": [],
-        "upper_left_corner": [0.426449, -0.580072, 0.777],
-        "lower_right_corner": [0.638743, -0.822116, 0.777]
+        "upper_left_corner": [0.347410, -0.563181, 0.777],
+        "lower_right_corner": [0.506025, -0.734134, 0.777]
     }
 }
 
