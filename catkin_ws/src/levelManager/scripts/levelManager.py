@@ -77,8 +77,8 @@ spawn_name = '_spawn'
 level = None
 selectBrick = None
 maxLego = 11
-spawn_pos = (-0.35, -0.42, 0.74)  		#center of spawn area
-spawn_dim = (0.32, 0.20)    			#spawning area
+spawn_pos = (-0.25, -0.42, 0.74)  		#center of spawn area
+spawn_dim = (0.20, 0.20)    			#spawning area
 min_space = 0.010    					#min space between lego
 min_distance = 0.15   					#min distance between lego
 
