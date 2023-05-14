@@ -33,10 +33,10 @@ model_orientation = None
 legoClasses = ['X1-Y1-Z2', 'X1-Y2-Z1', 'X1-Y2-Z2', 'X1-Y2-Z2-CHAMFER', 'X1-Y2-Z2-TWINFILLET', 'X1-Y3-Z2', 'X1-Y3-Z2-FILLET', 'X1-Y4-Z1', 'X1-Y4-Z2', 'X2-Y2-Z2', 'X2-Y2-Z2-FILLET']
 
 COLORS = {
-    "RED": (255, 0, 0), 
-    "BLUE":(0, 0, 255),
-    "GREEN": (0, 255, 0),
-    "YELLOW": (255, 255, 0)
+    "red": (255, 0, 0), 
+    "blue":(0, 0, 255),
+    "green": (0, 255, 0),
+    "yellow": (255, 255, 0)
 }
 
 argv = sys.argv
@@ -354,7 +354,7 @@ def process_item(imgs, item):
 
         # draw text
         if or_cl != '?': or_cn = ['SIDE', 'UP', 'DOWN'][or_cl]
-        text = "{} {:.2f} {}".format(rgb2name(list(reversed(color))), cn, or_cn)
+        text = "{} {:.2f} {} {}".format(rgb2name(list(reversed(color))), cn, or_cn, nm)
         # text = "{} {:.2f} {}".format(nm, cn, or_cn)
         (text_width, text_height) = cv.getTextSize(text, cv.FONT_HERSHEY_DUPLEX, 0.4, 1)[0]
         text_offset_x = boxCenter[1] - text_width // 2
