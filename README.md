@@ -16,7 +16,9 @@ The goals of this project can be found in the following list.
 - Perform speech segmentation and processing using NLP by associating the recorded text to pick and place commands while accounting for synonyms and invalid requests
 - Develop an interface for performing the processed robot commands in real-time
 
-Refer to [project_proposal.pdf]() and [project_report.pdf]() for more information regarding the VENBOT.
+VENBOT Video Demonstration: [https://youtu.be/71pDw8Pa65c](https://youtu.be/71pDw8Pa65c)
+
+Refer to [project_proposal.pdf](docs/project_proposal.pdf) and [project_report.pdf](docs/project_report.pdf) for more information regarding the VENBOT.
 
 <p align="center">
   <img src="docs/venbot_demo_pick.gif" />
@@ -92,6 +94,7 @@ $ ./launch.sh
 - collect the [color] lego
 - place it
 - set it
+- put the [color] lego
 - place it in [color]
 - sort
 - sort all
