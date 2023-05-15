@@ -68,9 +68,9 @@ def process(msg):
         
         if verb_test == 'sort':
             verb[0] = 'sort'
-        if verb_test == 'pick':
+        elif verb_test == 'pick':
             verb[0] = 'pick'    
-        if verb_test == 'place':
+        elif verb_test == 'place':
             verb[0] = 'place'
         elif verb_test in synonyms_pick:
             verb[0] = 'pick'
