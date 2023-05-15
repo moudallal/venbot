@@ -16,6 +16,7 @@ import numpy as np
 from gazebo_ros_link_attacher.srv import SetStatic, SetStaticRequest, SetStaticResponse
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 from voice_commands.msg import Command
+import PyKDL
 
 command = Command()
 
@@ -398,11 +399,136 @@ def command_callback(cmd):
     command.color = cmd.color
     command.valid = cmd.valid
 
+def check_path(x,y,z):
+    # Define the UR5 kinematic chain
+    L1 = 0.089159 #d1 between base and shoulder
+    L2 = 0.425 #a2 between shoulder and elbow
+    L3 = 0.39225 #a3 between elbow and first wrist
+    L4 = 0.10915 #d4
+    L5 = 0.09465 #d5
+    L6 = 0.0823 #d6
+    robot = PyKDL.Chain()
+    robot.addSegment(PyKDL.Segment(PyKDL.Joint(PyKDL.Joint.RotZ), PyKDL.Frame(PyKDL.Vector(0, 0, L1))))
+    robot.addSegment(PyKDL.Segment(PyKDL.Joint(PyKDL.Joint.RotY), PyKDL.Frame(PyKDL.Vector(0, 0, 0))))
+    robot.addSegment(PyKDL.Segment(PyKDL.Joint(PyKDL.Joint.RotY), PyKDL.Frame(PyKDL.Vector(0, L2, 0))))
+    robot.addSegment(PyKDL.Segment(PyKDL.Joint(PyKDL.Joint.RotY), PyKDL.Frame(PyKDL.Vector(0, L3, 0))))
+    robot.addSegment(PyKDL.Segment(PyKDL.Joint(PyKDL.Joint.RotX), PyKDL.Frame(PyKDL.Vector(0, L4, L5))))
+    robot.addSegment(PyKDL.Segment(PyKDL.Joint(PyKDL.Joint.RotY), PyKDL.Frame(PyKDL.Vector(0, 0, L6))))
+    # Define the inverse kinematics solver
+    ik_solver = PyKDL.ChainIkSolverPos_LMA(robot)
+    # Define the joint limits for each joint
+    jl = math.pi
+    joint_limits = [
+        (-jl,jl),  # Joint 1
+        (-jl,jl),  # Joint 2
+        (-jl,jl),  # Joint 3
+        (-jl,jl),  # Joint 4
+        (-jl,jl),  # Joint 5
+        (-jl,jl)   # Joint 6
+]
+    # Define the target end-effector pose (position and orientation)
+    pos = np.array([x, y, z])
+    rot = np.array([[0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [-1.0, 0.0, 0.0]])
+    target_pose = PyKDL.Frame(PyKDL.Rotation(rot[0][0], rot[0][1], rot[0][2], rot[1][0], rot[1][1], rot[1][2], rot[2][0], rot[2][1], rot[2][2]), PyKDL.Vector(pos[0], pos[1], pos[2]))
+    # Define the initial joint angles for the inverse kinematics calculation
+    q_init = PyKDL.JntArray(6)
+    q_init[0] = -1.5245
+    q_init[1] = -1.0301
+    q_init[2] = -1.4913
+    q_init[3] = -2.1925
+    q_init[4] = 1.5708
+    q_init[5] = 0.0463
+    # Calculate the inverse kinematics solution
+    q_out = PyKDL.JntArray(6)
+    ik_solver.CartToJnt(q_init, target_pose, q_out)
+    # Check if the joint angles are within the joint limits
+    is_within_limits = True
+    for i in range(6):
+        if q_out[i] < joint_limits[i][0] or q_out[i] > joint_limits[i][1]:
+            is_within_limits = False
+            break
+    if is_within_limits:
+        print('valid path')
+        return True
+    else:
+        print('invalid path')
+        return False
+  
+def pick(to_pick, legos):
+
+    lego = {}
+
+    for model_name, model_pose, model_color in legos:
+        if model_color == to_pick:
+            lego_name = model_name
+            lego_pose = model_pose
+            lego_color = to_pick
+            break
+    
+    open_gripper()
+
+    # Get actual model_name at model xyz coordinates
+    gazebo_model_name = get_gazebo_model_name(lego_name, lego_pose)
+    lego["lego_name"] = lego_name
+    lego["lego_pose"] = lego_pose
+    lego["lego_color"] = lego_color
+    lego["gazebo_model_name"] = gazebo_model_name
+
+    # Straighten lego
+    straighten(lego_pose, gazebo_model_name)
+
+    return lego
+
+def place(to_place, lego_in_op, prev, legos):
+    if to_place == 'previous':
+        lego_color = prev
+    else:
+        lego_color = to_place
+    for model_name, model_pose, model_color in legos:
+        if model_color == lego_color:
+            lego_name = model_name
+            lego_pose = model_pose
+
+    # model_home = MODELS_INFO[lego_name]["home"]
+    model_size = MODELS_INFO[lego_name]["size"]
+
+    target_upper_left = COLORS_INFO[lego_color]["upper_left_corner"]
+    target_lower_right = COLORS_INFO[lego_color]["lower_right_corner"]  
+
+    while True:
+        # x, y, z = model_home
+        x = random.uniform(target_upper_left[0], target_lower_right[0])
+        y = random.uniform(target_upper_left[1], target_lower_right[1])
+        z = target_upper_left[2]
+        z += model_size[2] / 2 + 0.004
+        if check_path(x,y,z):
+            break
+
+    print(f"Moving model {model_name} to {x} {y} {z}")
+    controller.move_to(x, y, target_quat=DEFAULT_QUAT * PyQuaternion(axis=[0, 0, 1], angle=math.pi / 2))
+    # Lower the object and release
+    controller.move_to(x, y, z)
+    set_model_fixed(lego_in_op["gazebo_model_name"])
+    open_gripper(lego_in_op["gazebo_model_name"])
+
+def sort_bricks(legos_available):
+    copy_legos = list(legos_available)
+    while copy_legos:
+        random_lego = random.choice(copy_legos)
+        lego_in_operation = pick(random_lego[2], legos)
+        prev = lego_in_operation["lego_color"]
+        controller.move(dz=0.15)
+        controller.move_to(*DEFAULT_POS, DEFAULT_QUAT)
+        place(random_lego[2], lego_in_operation, prev, legos)
+        controller.move(dz=0.15)
+        controller.move_to(*DEFAULT_POS, DEFAULT_QUAT)
+        copy_legos.pop(copy_legos.index(random_lego))
+
 if __name__ == "__main__":
     print("Initializing node of kinematics")
     rospy.init_node("send_joints")
     rospy.Subscriber("/command", Command, command_callback)
-
+    global controller
     controller = ArmController()
     # Create an action client for the gripper
     action_gripper = actionlib.SimpleActionClient(
@@ -430,67 +556,32 @@ if __name__ == "__main__":
     picked = False
     while not rospy.is_shutdown():
         if command.verb == 'pick' and not picked:
-            for model_name, model_pose, model_color in legos:
-                if model_color == command.color:
-                    lego_name = model_name
-                    lego_pose = model_pose
-                    lego_color = command.color
-                    prev = lego_color
-                    break
-           
-            open_gripper()
-       
-            # Get actual model_name at model xyz coordinates
-            gazebo_model_name = get_gazebo_model_name(lego_name, lego_pose)
-            lego_in_operation["lego_name"] = lego_name
-            lego_in_operation["lego_pose"] = lego_pose
-            lego_in_operation["lego_color"] = lego_color
-            lego_in_operation["gazebo_model_name"] = gazebo_model_name
-
-            # Straighten lego
-            straighten(lego_pose, gazebo_model_name)
-            controller.move(dz=0.15)
-            controller.move_to(*DEFAULT_POS, DEFAULT_QUAT)  # moving to destination would be done when processing the "place" command
-
+            # moving to destination would be done when processing the "place" command
+            lego_in_operation = pick(command.color, legos)
+            prev = lego_in_operation["lego_color"]
             picked = True
-
-        elif command.verb == 'place' and picked:
-            if command.color == 'previous':
-                lego_color = prev
-            else:
-                lego_color = command.color
-            for model_name, model_pose, model_color in legos:
-                if model_color == lego_color:
-                    lego_name = model_name
-                    lego_pose = model_pose
-
-            model_home = MODELS_INFO[lego_name]["home"]
-            model_size = MODELS_INFO[lego_name]["size"]
-
-            target_upper_left = COLORS_INFO[lego_color]["upper_left_corner"]
-            target_lower_right = COLORS_INFO[lego_color]["lower_right_corner"]  
-
-            # x, y, z = model_home
-            x = random.uniform(target_upper_left[0], target_lower_right[0])
-            y = random.uniform(target_upper_left[1], target_lower_right[1])
-            z = target_upper_left[2]
-            z += model_size[2] / 2 +0.004
-            print(f"Moving model {model_name} to {x} {y} {z}")
-
-            controller.move_to(x, y, target_quat=DEFAULT_QUAT * PyQuaternion(axis=[0, 0, 1], angle=math.pi / 2))
-            # Lower the object and release
-            controller.move_to(x, y, z)
-            set_model_fixed(lego_in_operation["gazebo_model_name"])
-            open_gripper(lego_in_operation["gazebo_model_name"])
             controller.move(dz=0.15)
             controller.move_to(*DEFAULT_POS, DEFAULT_QUAT)
+
+        elif command.verb == 'place' and picked:
+            place(command.color, lego_in_operation, prev, legos)
+            controller.move(dz=0.15)
+            controller.move_to(*DEFAULT_POS, DEFAULT_QUAT)
+            picked = False
+            for i in range(len(legos) - 1, -1, -1):
+                if legos[i][0] == lego_in_operation["lego_name"]:
+                    del legos[i]
+
+        elif command.verb == 'sort':
+            sort_bricks(legos)
+
+        elif command.verb == 'stop':
+            break
             # if controller.gripper_pose[0][1] > -0.3 and controller.gripper_pose[0][0] > 0:
             #     controller.move_to(*DEFAULT_POS, DEFAULT_QUAT)
 
             # increment z in order to stack lego correctly
-            MODELS_INFO[model_name]["home"][2] += model_size[2] - INTERLOCKING_OFFSET
-
-            picked = False
+            #MODELS_INFO[model_name]["home"][2] += model_size[2] - INTERLOCKING_OFFSET  
         else:
             pass
 
