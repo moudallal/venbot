@@ -18,6 +18,11 @@ The goals of this project can be found in the following list.
 
 Refer to [project_proposal.pdf]() and [project_report.pdf]() for more information regarding the VENBOT.
 
+<p align="center">
+  <img src="docs/venbot_demo_pick.gif" />
+  <img src="docs/venbot_demo_place.gif" />
+</p>
+
 ## Installation
 In order to successfully run all functionalities of this assignment, you should have ROS Noetic and Gazebo 7 installed.
 
