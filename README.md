@@ -2,7 +2,7 @@
   <img src="docs/screenshot.jpg" width="80%"/>
 </p>
 
-# VENBOT: A Voice-controlled Environment-aware NLP-based Manipulator RoBOT
+# VENBOT: A <i>V</i>oice-controlled <i>E</i>nvironment-aware <i>N</i>LP-based Manipulator Ro<i>BOT</i>
 This repository contains the files for MCE550's Final Project. You can find a description of the MCE550 course [here](https://soe.lau.edu.lb/departments/mechatronics/degree-programs/mechatronic-courses.php#MCE550).
 
 ## Overview
@@ -76,6 +76,11 @@ $ ./launch.sh
 #### 2. Wait for the all the terminals to launch properly
 
 #### 3. Start giving commands! The available commands can be found below.
+
+<p align="center">
+  <img src="docs/venbot_speech_terminal.png" width="50%" />
+</p>
+
 - pick the [color] lego 
 - take the [color] lego
 - grasp the [color] lego
@@ -84,7 +89,8 @@ $ ./launch.sh
 - set it
 - place it in [color]
 - sort
-
+- sort all
+- stop
 
 ## Credits
 | Name                    | GitHub                                |
