@@ -21,30 +21,25 @@ from nltk.tokenize import word_tokenize
 
 import requests
 API_KEY = "c46040cd-8c0a-4f8a-97da-46a31fa35a25"
+nlp = spacy.load('en_core_web_sm')
 
 message = Speech()
 command = Command()
-processed = False
+command.valid = False
 
 def process(msg):
     # process the message
-    words = word_tokenize(msg)
-    pos_tags = nltk.pos_tag(words)
-    verb = []; object = []; adjective = []
-    for i in range(len(pos_tags)):
-        word, tag = pos_tags[i]
-        if tag.startswith('VB'):
-            verb.append(word)
-        elif re.match("NN.*", tag):
-            object.append(word)
-            if word == 'place':
-                verb.append(word)
-                object.remove(word)
-            if word == 'blue':
-                adjective.append(word)
-                object.remove(word)
-        elif re.match("JJ.*", tag):
-            adjective.append(word)
+    doc = nlp(msg)
+    verb = []; adjective = []
+    for token in doc:
+        if token.pos_ == 'VERB':
+            verb.append(token.text)
+        elif token.pos_ == 'ADJ':
+            adjective.append(token.text)
+        if token.text == 'place':
+            verb.append('place')
+        if token.text == 'sort':
+            verb.append('sort')
 
     # invalid for this API: locate, relocate, give, hold, grab, bring, fetch
     word1 = 'pick' # grasp, lift, collect, take
@@ -72,7 +67,9 @@ def process(msg):
                 for synset in result["meta"]["syns"]:
                     synonyms_pick.update(synset)
         
-        if verb_test in synonyms_pick:
+        if verb_test == 'sort':
+            pass
+        elif verb_test in synonyms_pick:
             verb[0] = 'pick'
         elif verb_test in synonyms_place:
             verb[0] = 'place'
@@ -120,6 +117,10 @@ def process(msg):
                     command.color = '0'
                     command.verb = '0'
                     command.valid = False
+        elif verb.__contains__('sort'):
+            command.verb = 'sort'
+            command.color = 'all'
+            command.valid = True
         else:
             command.color = '0'
             command.verb = '0'
@@ -141,8 +142,6 @@ def result_segmentation(msg):
     else:
         print(' User command: ', message.text)
         [command.verb, command.color, command.valid] = process(message.text)
-        global processed
-        processed = True
 
 def speech_segmentation():
     rospy.init_node('speech_segmentation', anonymous=True)
@@ -157,9 +156,11 @@ def speech_segmentation():
         else:
             if (command.verb == '0') or (command.color == '0'):
                 print(' Invalid command')
-                #break
+                command.valid = True
+                pass
             else:
                 pass
+            processed = False
         #rate.sleep()
 
    
