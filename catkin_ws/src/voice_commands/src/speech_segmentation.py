@@ -25,7 +25,6 @@ nlp = spacy.load('en_core_web_sm')
 
 message = Speech()
 command = Command()
-command.valid = False
 
 def process(msg):
     # process the message
@@ -68,14 +67,16 @@ def process(msg):
                     synonyms_pick.update(synset)
         
         if verb_test == 'sort':
-            pass
+            verb[0] = 'sort'
+        if verb_test == 'pick':
+            verb[0] = 'pick'    
+        if verb_test == 'place':
+            verb[0] = 'place'
         elif verb_test in synonyms_pick:
             verb[0] = 'pick'
         elif verb_test in synonyms_place:
             verb[0] = 'place'
-        else:
-            verb[0] = 'invalid'            
-        
+              
         '''
         # alternative to API - dictionary
         pick_synonyms = ['pick','hold','take','collect','grasp','lift','grab','bring','fetch','get']
@@ -89,7 +90,7 @@ def process(msg):
         '''
             
         # find the corresponding command
-        if verb.__contains__('place'):
+        if verb[0] == 'place':
             command.verb = 'place'
             if adjective == []:
                 command.color = 'previous'
@@ -102,7 +103,7 @@ def process(msg):
                     command.color = '0'
                     command.verb = '0'
                     command.valid = False
-        elif verb.__contains__('pick'):
+        elif verb[0] == 'pick':
             command.verb = 'pick'
             if adjective == []:
             # cannot pick an object of unknown color -> invalid command
@@ -117,20 +118,15 @@ def process(msg):
                     command.color = '0'
                     command.verb = '0'
                     command.valid = False
-        elif verb.__contains__('sort'):
+        elif verb[0] == 'sort':
             command.verb = 'sort'
             command.color = 'all'
             command.valid = True
-        else:
-            command.color = '0'
-            command.verb = '0'
-            command.valid = False
-    else:
+    elif verb == []:
         # command without verb is invalid
         command.verb = ''
         command.color = ''
         command.valid = False
-    return command.verb, command.color, command.valid 
 
 
 def result_segmentation(msg):
@@ -141,8 +137,9 @@ def result_segmentation(msg):
         print(' User command: Stopping')
     else:
         print(' User command: ', message.text)
-        [command.verb, command.color, command.valid] = process(message.text)
-
+        process(message.text)
+    
+    
 def speech_segmentation():
     rospy.init_node('speech_segmentation', anonymous=True)
     pub = rospy.Publisher('/command', Command, queue_size=10)  
@@ -152,15 +149,15 @@ def speech_segmentation():
         if command.valid:
             print(' Sending the command: ', command.verb, " ", command.color)
             pub.publish(command)
+            command.verb = ''
+            command.color = ''
             command.valid = False
         else:
             if (command.verb == '0') or (command.color == '0'):
-                print(' Invalid command')
                 command.valid = True
-                pass
+                print(' Invalid command')
             else:
                 pass
-            processed = False
         #rate.sleep()
 
    
